@@ -1,0 +1,143 @@
+---
+title: "Data Acquiring"
+author: "Weilun Zhang"
+date: "5/18/2021"
+output: html_document
+---
+
+```{r}
+library(tidyr)
+library(geosphere)
+library(tidyverse)
+library(data.table)
+library(VFS)
+library(tseries)
+library(ggplot2)
+```
+
+```{r Reading Date for US Stations and writes to local file}
+lines = readLines("https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt")
+
+country = 'US'
+nstations = length(lines)
+
+country_stations = NULL
+
+for (i in seq(1, nstations)){
+  if(substr(lines[i],1,2) != country) {
+    next
+  } else {
+    line_parsed = c(substr(lines[i],1,11), substr(lines[i],13,20), substr(lines[i],22,30), substr(lines[i],32,37), substr(lines[i],39,40), substr(lines[i],42,71), substr(lines[i],73,75), substr(lines[i],77,79), substr(lines[i],81,85))
+  }
+  country_stations = rbind(country_stations, line_parsed)
+}  
+
+df = data.table(country_stations)
+colnames(df) = c("ID", "LATITUDE", "LONGITUDE", "ELEVATION", "STATE", "NAME", "GSN_FLAG", "HCN_CRN_FLAG", "WMO_ID")
+df$LATITUDE = as.numeric(df$LATITUDE)
+df$LONGITUDE = as.numeric(df$LONGITUDE)
+
+#saves time if the station file did not get updated
+write.csv(df, "US_stations.csv")
+```
+
+```{r read from local data}
+df <- fread("US_stations.csv")
+df <- df[,-1]
+```
+
+```{r Distance Function Defined}
+station_within <- function(lat, long, dist = 10){
+  df$DISTANCE_km <- acos(sin(df$LATITUDE * pi /180) * sin(lat * pi / 180) + cos(df$LATITUDE * pi /180) * cos(lat * pi / 180) * cos(df$LONGITUDE * pi / 180 - long * pi / 180)) * 6371.009
+  df %>%
+    filter(DISTANCE_km <= dist)%>%
+    arrange(DISTANCE_km)%>%
+    return()
+}
+```
+
+```{r Example of Getting Weather for Columbia}
+target <- station_within(40.80717, -73.96174, 10)
+target
+```
+
+```{r}
+weather <- list()
+
+for(i in 1:nrow(target)){
+  # name <- paste("ghcnd_all/", target[[i,1]], ".dly", sep = "")
+  # print(name)
+  # weather[[i]] = cbind(ID = target[[i,1]], read.dly(name))
+
+  #weather data directly from the GHCN Website
+  weather[[i]] <- cbind(ID = target[[i,1]], read.dly(paste("ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/all/", target[[i,1]], ".dly", sep = "")))
+  
+}
+```
+
+```{r weather data availibility}
+for(i in 1:length(weather)){
+  print(paste("Station ---", weather[[i]][1,1]))
+  for(k in 1 + 4 * (1:(length(names(weather[[i]])) / 4 - 1))){
+    if(sum(!is.na(weather[[i]][k])) > 0){
+      index <- which(!is.na(weather[[i]][k]))
+      print(paste(names(weather[[i]])[k], " ", weather[[i]][min(index), 2], "_", weather[[i]][min(index), 3], " ", weather[[i]][max(index), 2], "_", weather[[i]][max(index), 3], sep = ""))
+    }
+  }
+}
+```
+```{r aggragation of weather data}
+target = "PRCP.VALUE"
+df <- data.frame(matrix(ncol=3,nrow=0, dimnames=list(NULL, c("YEAR", "MONTH", "DAY"))))
+for(i in 1:length(weather)){
+  df <- df %>%
+    full_join(weather[[i]][(names(weather[[i]]) %in% c("YEAR", "MONTH", "DAY", target))], by = c("YEAR", "MONTH", "DAY"))
+}
+
+DATE = as.Date(paste(df$YEAR, "/", df$MONTH, "/", df$DAY, sep = ""))
+ELEMENT_AVG = 10 * rowMeans(df[,-c(1, 2, 3)], na.rm = TRUE)
+N_STATIONS = rowSums(!is.na(df[,-c(1, 2, 3)]))
+
+result <- data.table(DATE, ELEMENT_AVG, N_STATIONS)
+```
+
+```{r visual}
+ggplot(result, aes(x = DATE, y = ELEMENT_AVG)) + geom_line(color = "blue", alpha = 0.6) + geom_smooth(color = "red")
+ggplot(result[DATE >= "2021-01-01" & DATE <= "2021-05-15"], aes(x = DATE, y = ELEMENT_AVG)) + geom_line(color = "blue", alpha = 0.6) + geom_smooth(color = "red")
+```
+
+
+
+```{r aggragation of weather data}
+target = c("PRCP.VALUE", "TMAX.VALUE", "TMIN.VALUE", "SNOW.VALUE", "SNWD.VALUE")
+
+result <- data.frame(matrix(ncol=1,nrow=0, dimnames=list(NULL, c("DATE"))))
+result$DATE <- as.Date(result$DATE)
+name <- rep("DATE", 1 + 2 * length(target))
+  
+for (j in target) {
+  df <- data.frame(matrix(ncol=3,nrow=0, dimnames=list(NULL, c("YEAR", "MONTH", "DAY"))))
+  for(i in 1:length(weather)){
+    df <- df %>%
+      full_join(weather[[i]][(names(weather[[i]]) %in% c("YEAR", "MONTH", "DAY", j))], by = c("YEAR", "MONTH", "DAY"))
+  }
+
+  DATE = as.Date(paste(df$YEAR, "/", df$MONTH, "/", df$DAY, sep = ""))
+  ELEMENT_AVG = rowMeans(df[,-c(1, 2, 3)], na.rm = TRUE)
+  N_STATIONS = rowSums(!is.na(df[,-c(1, 2, 3)]))
+  result <- result%>%
+    full_join(data.table(DATE, ELEMENT_AVG, N_STATIONS), by = c("DATE"))
+  }
+
+
+for (j in 1:length(target)) {
+  name[2 * j] = paste(target[j], "_AVG", sep = "")
+  name[1 + 2 * j] = paste(target[j], "_NSTATIONS", sep = "")
+}
+
+colnames(result) = name
+```
+
+```{r visual}
+ggplot(result, aes(x = DATE, y = TMAX.VALUE_AVG)) + geom_line(color = "blue", alpha = 0.5) + geom_smooth(color = "red")
+```
