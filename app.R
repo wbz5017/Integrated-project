@@ -50,7 +50,7 @@ station_within <- function(lat, long, dist){
              tabPanel("Stations locator",
                       sidebarLayout(
                         sidebarPanel(width = 3,
-                                     span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
+                                     # span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
                                      textInput(inputId = "address", label = "Address", value = "", width = '100%', placeholder = NULL),
                                      numericInput(inputId = "dis", label = "distance within -km", value = "", min = 1, max = 100),
                                      actionButton(inputId = "stat", label = "Show target stations")
