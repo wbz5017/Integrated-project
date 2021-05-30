@@ -33,82 +33,117 @@ library(ggplot2)
 Stations <- fread("US_stations.csv")
 Stations <- Stations[,-1]
 
-  # Define UI
-  ui <- fluidPage(theme = shinytheme("cerulean"),
-    navbarPage(
-      # theme = "cerulean",  # <--- To use a theme, uncomment this
-      "GHCN Weather Data",
-      tabPanel("Stations",
-               sidebarPanel(
-                 tags$h3("Input:"),
-                 numericInput("n1", "Latitude:", 40.8, min = -90, max = 90),
-                 numericInput("n2", "Longitude:", -73.96174, min = -180, max = 180),
-                 numericInput("n3", "Distance:", 10, min = 0, max = 20),
-                 
-               ), # sidebarPanel
-               tabsetPanel(id="ui_tab",
-                           tabPanel("Map",
-                                    column(12,h4("Click a site"))
-                           ),
-                           tabPanel("Table",
-                                    column(12, div(DT::dataTableOutput("txtout1"), style = "font-size:70%"))
-                           )
-               )
-               
-      ), # Navbar 1, tabPanel
-      tabPanel("Weather Data Availiability", 
-               mainPanel(h1("Weather Data Availiability"),
-                         verbatimTextOutput("txtout2"),
-                         )),
-      tabPanel("Aggregation",
-        sidebarPanel(
-        tags$h3("Input:"),
-        selectInput("Key1", label = "Key1:", 
-                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
-                    selected = "None"),
-        selectInput("Key2", label = "Key2:", 
-                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
-                    selected = "None"),
-        selectInput("Key3", label = "Key3:", 
-                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
-                    selected = "None"),
-        selectInput("Key4", label = "Key4:", 
-                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
-                    selected = "None"),
-        selectInput("Key5", label = "Key5:", 
-                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
-                    selected = "None"),
-      ),
-      
-      "Table", column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%")))
-  
-    ) # navbarPage
-  ) # fluidPage
+# get target stations
+df <- fread("US_stations.csv")
+station_within <- function(lat, long, dist){
+  df$DISTANCE_km <- acos(sin(df$LATITUDE * pi /180) * sin(lat * pi / 180) + cos(df$LATITUDE * pi /180) * cos(lat * pi / 180) * cos(df$LONGITUDE * pi / 180 - long * pi / 180)) * 6371.009
+  df %>%
+    filter(DISTANCE_km <= dist)%>%
+    arrange(DISTANCE_km)%>%
+    return()
+}
 
+ # Define UI
+ ui <- fluidPage(theme = shinytheme("cerulean"),
+   navbarPage("GHCN Climate Data", theme = shinytheme("flatly"),
+             
+             tabPanel("Stations locator",
+                      sidebarLayout(
+                        sidebarPanel(width = 3,
+                                     span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
+                                     textInput(inputId = "address", label = "Address", value = "", width = '100%', placeholder = NULL),
+                                     numericInput(inputId = "dis", label = "distance within -km", value = "", min = 1, max = 100),
+                                     actionButton(inputId = "stat", label = "Show target stations")
+                        ),
+                        mainPanel(dataTableOutput("stations"), width = 9),
+                        position = c("left","right"),
+                        fluid = TRUE)
+             ),
+              
+              tabPanel("Weather Data Availiability", 
+                       numericInput("n2", "Longitude:", -73.96174, min = -180, max = 180),
+                       mainPanel(h1("Weather Data Availiability"),
+                                 verbatimTextOutput("txtout2"))
+                      ),
+              
+              tabPanel("Weather Data Aggregation",
+                       # sidebarLayout(
+                      #   sidebarPanel(
+                      #     checkboxGroupInput(
+                      #       
+                      #     )
+                      #   ),
+                      #   
+                      #   mainPanel(
+                      #     tabsetPanel(
+                      #       tabPanel("Weather Summary Table",column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%"))),
+                      #       tabPanel("Time-series Plot", plotOutput("")))
+                      #   ),
+                      #   
+                      #   position = c("left","right"),
+                      #   fluid = TRUE)
+                      # ),
+                       
+                       sidebarPanel(
+                        tags$h3("Input:"),
+                        selectInput("Key1", label = "Key1:", 
+                                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
+                                    selected = "None"),
+                        selectInput("Key2", label = "Key2:", 
+                                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
+                                    selected = "None"),
+                        selectInput("Key3", label = "Key3:", 
+                                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
+                                    selected = "None"),
+                        selectInput("Key4", label = "Key4:", 
+                                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
+                                    selected = "None"),
+                        selectInput("Key5", label = "Key5:",
+                                    choices = list("None" = "None", "PRCP.VALUE" = "PRCP.VALUE", "TMAX.VALUE" = "TMAX.VALUE", "TMIN.VALUE" = "TMIN.VALUE", "SNOW.VALUE" = "SNOW.VALUE", "SNWD.VALUE" = "SNWD.VALUE"), 
+                                    selected = "None")
+                        ),
+                      
+                      "Table", column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%"))
+                      )
+  )
+)
   
   
   # Define server function  
   server <- function(input, output) {
-    datasetInput1 <- reactive({
-    temp <- data.frame(
-      Name = c("Latitude",
-               "Longitude",
-               "Distance"),
-      Value = c(input$n1,
-                input$n2,
-                input$n3)
-      )
-    df <- Stations
-    df$DISTANCE_km <- acos(sin(df$LATITUDE * pi /180) * sin(input$n1 * pi / 180) + cos(df$LATITUDE * pi /180) * cos(input$n1 * pi / 180) * cos(df$LONGITUDE * pi / 180 - input$n2 * pi / 180)) * 6371.009
-    target <- arrange(filter(df, DISTANCE_km <= input$n3), DISTANCE_km)
+    #datasetInput1 <- reactive({
+    #temp <- data.frame(
+    #  Name = c("Latitude",
+    #          "Longitude",
+    #          "Distance"),
+    #  Value = c(input$n1,
+    #            input$n2,
+    #            input$n3)
+    #  )
+    #df <- Stations
+    #df$DISTANCE_km <- acos(sin(df$LATITUDE * pi /180) * sin(input$n1 * pi / 180) + cos(df$LATITUDE * pi /180) * cos(input$n1 * pi / 180) * cos(df$LONGITUDE * pi / 180 - input$n2 * pi / 180)) * 6371.009
+    #target <- arrange(filter(df, DISTANCE_km <= input$n3), DISTANCE_km)
+    #
+    #return(target)
+    #})
     
-    return(target)
-    })
+    
+    #output$txtout1 <- DT::renderDataTable({
+    #    datasetInput1()
+    #})
     
     
-    output$txtout1 <- DT::renderDataTable({
-        datasetInput1()
-    })
+    # show the list of target stations
+  statif <- eventReactive(input$stat,{
+    as.character(input$address)
+  })
+  output$stations <- renderDataTable({
+    lat <- as.numeric(geo(statif(), method = 'osm', lat = lat, long = long)[2])
+    long <- as.numeric(geo(statif(), method = 'osm', lat = lat, long = long)[3])
+    stations <- station_within(lat, long, input$dis)
+   })
+    
+    
     datasetInput2 <- reactive({
       target <- datasetInput1()
       weather <- list()
