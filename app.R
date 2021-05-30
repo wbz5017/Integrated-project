@@ -44,21 +44,21 @@ station_within <- function(lat, long, dist){
 }
 
  # Define UI
- ui <- fluidPage(theme = shinytheme("cerulean"),
-   navbarPage("GHCN Climate Data", theme = shinytheme("flatly"),
+ ui <- fluidPage(
+  navbarPage("GHCN Climate Data", theme = shinytheme("flatly"),
              
              tabPanel("Stations locator",
                       sidebarLayout(
                         sidebarPanel(width = 3,
-                                     # span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
+                                     #span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
                                      textInput(inputId = "address", label = "Address", value = "", width = '100%', placeholder = NULL),
                                      numericInput(inputId = "dis", label = "distance within -km", value = "", min = 1, max = 100),
                                      actionButton(inputId = "stat", label = "Show target stations")
-                        ),
+                                     ),
                         mainPanel(dataTableOutput("stations"), width = 9),
                         position = c("left","right"),
                         fluid = TRUE)
-             ),
+                      ),
               
               tabPanel("Weather Data Availiability", 
                        numericInput("n2", "Longitude:", -73.96174, min = -180, max = 180),
@@ -106,11 +106,9 @@ station_within <- function(lat, long, dist){
                       "Table", column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%"))
                       )，
               
-              tabPanel("Reference",
-                      actionLink(inputId = "download", label = "View Original GHCN data",class="btn btn-info"),
-                      span(tags$i(h6("List of stations and their coordinated can be found by downloading 'ghcnd-stations.txt'.", style="font-size:20px"))),
-                      span(tags$i(h6("Climation information for all stations can be extracted from 'ghcnd-all.tar.gz' file.", style="font-size:20px")))
-             )
+               tabPanel("Reference",
+                      actionLink(inputId = "download", label = "View Original GHCN data",class="btn btn-info")
+                      )
   )
 )
   
@@ -152,7 +150,7 @@ station_within <- function(lat, long, dist){
     lat <- as.numeric(geo(statif(), method = 'osm', lat = lat, long = long)[2])
     long <- as.numeric(geo(statif(), method = 'osm', lat = lat, long = long)[3])
     stations <- station_within(lat, long, input$dis)
-   })
+  })
     
     
     datasetInput2 <- reactive({
