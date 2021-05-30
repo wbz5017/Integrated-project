@@ -3,14 +3,12 @@
 library(shiny)
 library(shinythemes)
 library(tidyr)
-library(dplyr)
 library(geosphere)
+library(tidyverse)
 library(data.table)
 library(VFS)
 library(tseries)
 library(ggplot2)
-library(ggmap)
-library(tidygeocoder)
 
 # lines = readLines("https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt")
 # 
@@ -32,11 +30,10 @@ library(tidygeocoder)
 # colnames(df) = c("ID", "LATITUDE", "LONGITUDE", "ELEVATION", "STATE", "NAME", "GSN_FLAG", "HCN_CRN_FLAG", "WMO_ID")
 # df$LATITUDE = as.numeric(df$LATITUDE)
 # df$LONGITUDE = as.numeric(df$LONGITUDE)
-Stations <- fread("US_stations.csv")
-Stations <- Stations[,-1]
+df <- fread("US_stations.csv")
+df <- df[,-1]
 
 # get target stations
-df <- fread("US_stations.csv")
 station_within <- function(lat, long, dist){
   df$DISTANCE_km <- acos(sin(df$LATITUDE * pi /180) * sin(lat * pi / 180) + cos(df$LATITUDE * pi /180) * cos(lat * pi / 180) * cos(df$LONGITUDE * pi / 180 - long * pi / 180)) * 6371.009
   df %>%
@@ -53,8 +50,8 @@ station_within <- function(lat, long, dist){
                       sidebarLayout(
                         sidebarPanel(width = 3,
                                      #span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
-                                     textInput(inputId = "address", label = "Address", value = "", width = '100%', placeholder = NULL),
-                                     numericInput(inputId = "dis", label = "distance within -km", value = "", min = 1, max = 100),
+                                     textInput(inputId = "address", label = "Address", value = "30 Morningside Drive, New York, NY, 10025", width = '100%', placeholder = NULL),
+                                     numericInput(inputId = "dis", label = "distance within -km", value = "10", min = 1, max = 100),
                                      actionButton(inputId = "stat", label = "Show target stations")
                                      ),
                         mainPanel(dataTableOutput("stations"), width = 9),
@@ -62,8 +59,7 @@ station_within <- function(lat, long, dist){
                         fluid = TRUE)
                       ),
               
-              tabPanel("Weather Data Availiability", 
-                       numericInput("n2", "Longitude:", -73.96174, min = -180, max = 180),
+              tabPanel("Weather Data Availiability",
                        mainPanel(h1("Weather Data Availiability"),
                                  verbatimTextOutput("txtout2"))
                       ),
@@ -106,7 +102,7 @@ station_within <- function(lat, long, dist){
                         ),
                       
                       "Table", column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%"))
-                      )，
+                      ),
               
                tabPanel("Reference",
                       actionLink(inputId = "download", label = "View Original GHCN data",class="btn btn-info")
@@ -148,10 +144,15 @@ station_within <- function(lat, long, dist){
   statif <- eventReactive(input$stat,{
     as.character(input$address)
   })
-  output$stations <- renderDataTable({
+  
+  datasetInput1 <- reactive({
     lat <- as.numeric(geo(statif(), method = 'osm', lat = lat, long = long)[2])
     long <- as.numeric(geo(statif(), method = 'osm', lat = lat, long = long)[3])
-    stations <- station_within(lat, long, input$dis)
+    target <- station_within(lat, long, input$dis)
+    return(target)
+  })
+  output$stations <- renderDataTable({
+    datasetInput1()
   })
     
     
