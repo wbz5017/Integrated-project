@@ -3,12 +3,14 @@
 library(shiny)
 library(shinythemes)
 library(tidyr)
+library(dplyr)
 library(geosphere)
-library(tidyverse)
 library(data.table)
 library(VFS)
 library(tseries)
 library(ggplot2)
+library(ggmap)
+library(tidygeocoder)
 
 # lines = readLines("https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt")
 # 
