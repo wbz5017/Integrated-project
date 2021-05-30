@@ -104,13 +104,24 @@ station_within <- function(lat, long, dist){
                         ),
                       
                       "Table", column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%"))
-                      )
+                      )，
+              
+              tabPanel("Reference",
+                      actionLink(inputId = "download", label = "View Original GHCN data",class="btn btn-info"),
+                      span(tags$i(h6("List of stations and their coordinated can be found by downloading 'ghcnd-stations.txt'.", style="font-size:20px"))),
+                      span(tags$i(h6("Climation information for all stations can be extracted from 'ghcnd-all.tar.gz' file.", style="font-size:20px")))
+             )
   )
 )
   
   
   # Define server function  
   server <- function(input, output) {
+    # for reference to GHCN website if click on download button
+  observeEvent(input$download,{
+    browseURL("https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/")
+  })
+    
     #datasetInput1 <- reactive({
     #temp <- data.frame(
     #  Name = c("Latitude",
