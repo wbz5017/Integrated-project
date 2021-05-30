@@ -57,7 +57,7 @@ station_within <- function(lat, long, dist = 10){
 ```
 
 ```{r Example of Getting Weather for Columbia}
-target <- station_within(40.80717, -73.96174, 10)
+target <- station_within(40, -73.96174, 10)
 target
 ```
 
@@ -94,7 +94,7 @@ for(i in 1:length(weather)){
     full_join(weather[[i]][(names(weather[[i]]) %in% c("YEAR", "MONTH", "DAY", target))], by = c("YEAR", "MONTH", "DAY"))
 }
 
-DATE = as.Date(paste(df$YEAR, "/", df$MONTH, "/", df$DAY, sep = ""))
+DATE = as.Date(paste(df$YEAR,df$MONTH,df$DAY, sep = "/"))
 ELEMENT_AVG = 10 * rowMeans(df[,-c(1, 2, 3)], na.rm = TRUE)
 N_STATIONS = rowSums(!is.na(df[,-c(1, 2, 3)]))
 
