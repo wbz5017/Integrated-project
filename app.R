@@ -50,7 +50,7 @@ station_within <- function(lat, long, dist){
                       sidebarLayout(
                         sidebarPanel(width = 3,
                                      #span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
-                                     textInput(inputId = "address", label = "Address", value = "30 Morningside Drive, New York, NY, 10025", width = '100%', placeholder = NULL),
+                                     textInput(inputId = "address", label = "Address", value = "2960 Broadway, New York, NY 10027", width = '100%', placeholder = NULL),
                                      numericInput(inputId = "dis", label = "distance within -km", value = "10", min = 1, max = 100),
                                      actionButton(inputId = "stat", label = "Show target stations")
                                      ),
