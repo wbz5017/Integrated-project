@@ -10,6 +10,7 @@ library(VFS)
 library(tseries)
 library(ggplot2)
 library(tidygeocoder)
+library(reshape)
 
 # lines = readLines("https://www1.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt")
 # 
@@ -33,7 +34,7 @@ library(tidygeocoder)
 # df$LONGITUDE = as.numeric(df$LONGITUDE)
 
 df <- fread("US_stations.csv")
-#df <- df[,-1]
+df <- df[,-1]
 
 # get target stations
 station_within <- function(lat, long, dist){
@@ -50,10 +51,10 @@ ui <- fluidPage(
              
              tabPanel("Stations locator",
                       sidebarLayout(
-                        sidebarPanel(width = 3,
+                        sidebarPanel(width = 5,
                                      #span(tags$i(h6("Target US stations within x-km of the address entered")), style="color:#045a8d"),
-                                     textInput(inputId = "address", label = "Address", value = "", width = '100%', placeholder = NULL),
-                                     numericInput(inputId = "dis", label = "distance within -km", value = "", min = 1, max = 100),
+                                     textInput(inputId = "address", label = "Address", value = "2960 Broadway, New York, NY 10027", width = '100%', placeholder = NULL),
+                                     numericInput(inputId = "dis", label = "distance within -km", value = "10", min = 1, max = 100),
                                      actionButton(inputId = "stat", label = "Show target stations")
                         ),
                         mainPanel(dataTableOutput("stations"), width = 9),
@@ -68,17 +69,18 @@ ui <- fluidPage(
              
              tabPanel("Weather Data Aggregation",
                       sidebarLayout(
-                        sidebarPanel(width = 2,
-                          dateRangeInput(inputId = "date", label = "Date range", start = NULL, end = NULL, min = NULL, max = NULL, 
-                                         format = "yyyy-mm", startview = "month", weekstart = 0, language = "en", separator = "to", width = 200),           
+                        sidebarPanel(width = 5,
+                                     dateRangeInput(inputId = "date", label = "Date range", start = NULL, end = NULL, min = NULL, max = NULL, 
+                                                    format = "yyyy-mm-dd", startview = "month", weekstart = 0, language = "en", separator = "to", width = 300),
+                                     # uiOutput("date_slider"),           
                           checkboxGroupInput(inputId = "key", label = "Features:",
-                                             choices = list("Precipitation" = "PRCP.VALUE", "Maximum temperature" = "TMAX.VALUE", "Minimum temperature" = "TMIN.VALUE", "Snowfall" = "SNOW.VALUE", "Snow depth" = "SNWD.VALUE"), 
+                                             choices = list("Precipitation (mm)" = "PRCP.VALUE", "Maximum temperature (degrees C)" = "TMAX.VALUE", "Minimum temperature (degrees C)" = "TMIN.VALUE", "Snowfall (mm)" = "SNOW.VALUE", "Snow depth (mm)" = "SNWD.VALUE", "Average cloudiness (percent)" = "ACMC.VALUE"), 
                                              selected = "PRCP.VALUE")
                           ),
                         mainPanel(
                           tabsetPanel(
                             tabPanel("Weather Summary Table",column(12, div(DT::dataTableOutput("txtout3"), style = "font-size:70%"))),
-                            tabPanel("Time-series Plot", plotOutput("")))
+                            tabPanel("Time-series Plot", plotOutput("tsplots")))
                         ),
 
                         position = c("left","right"),
@@ -194,9 +196,7 @@ server <- function(input, output) {
   # show the weather data aggregation table
   datasetInput3 <- reactive({
     weather <- datasetInput2()[[2]]
-    #target = as.character(c(input$Key1, input$Key2, input$Key3, input$Key4, input$Key5))
     target = input$key
-    target = target[target != "None"]
     
     result <- data.frame(matrix(ncol=1,nrow=0, dimnames=list(NULL, c("DATE"))))
     result$DATE <- as.Date(result$DATE)
@@ -224,11 +224,37 @@ server <- function(input, output) {
     
     colnames(result) = name
     result <- data.table(result)
+    
     return(result)
   })
   output$txtout3 <- DT::renderDataTable({
     datasetInput3()
   })
+  
+  # DATE
+  output$date_slider <- renderUI({
+    req(datasetInput3()$DATE)
+    date_min=min(datasetInput3()$DATE)
+    date_max=max(datasetInput3()$DATE)
+    sliderInput("date_slider", "Date range:", min=date_min, max=date_max, value=c(date_min,date_max))
+  })
+  
+  datasetInput4 <- reactive({
+    reactive_objects <- datasetInput3()
+    reactive_objects <- reactive_objects[
+      DATE>=input$date[1] &
+        DATE<=input$date[2]
+    ]
+    reactive_objects <- melt(reactive_objects[, c(1, 2 * (1:((length(datasetInput3()) - 1) / 2)))], id.vars = "DATE")
+    
+    pp <- ggplot(reactive_objects, aes(x = DATE, y = value, colour = variable)) + geom_line()
+    return(pp)
+  })
+  
+  output$tsplots <- renderPlot({
+    datasetInput4()
+  })
+  
 } # server
 
 
